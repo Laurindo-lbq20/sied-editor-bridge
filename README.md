@@ -26,6 +26,7 @@ copyright and attribution notices are in its `NOTICE` file.
 |---|---|
 | `bridge/` | The scripts that run on the editor page (one module per feature). |
 | `bridge/icones/` | Icons for the menu buttons. |
+| `motor/` | Which version of the engine this runs on (`BASE.md`) and the few files of it that differ from the original (`NOTICE`, `bin/vercel-postbuild.mjs`). |
 | `vite.config.ts` | Development: the engine's own Vite config plus the bridge. |
 | `depois-do-build.mjs` | After the engine's build: copies `bridge/` into `dist/` and adds the script tag to `dist/editor.html`. |
 | `LEIA-ME.md` | Notes on the bridge, in Portuguese. |
