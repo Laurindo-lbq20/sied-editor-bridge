@@ -10,6 +10,7 @@
 // segurança da página já aceita scripts do próprio endereço ('self'), por isso
 // não é preciso mexer nela.
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -17,7 +18,6 @@ import { fileURLToPath } from 'node:url';
 
 const PASTA = path.join(path.dirname(fileURLToPath(import.meta.url)), 'bridge');
 const DIST = path.resolve(process.argv[2] ?? 'dist');
-const ETIQUETA = '<script type="module" src="/bridge/index.js"></script>';
 const PAGINA = path.join(DIST, 'editor.html');
 const AVISO = '/*! Editor bridge. SPDX-License-Identifier: AGPL-3.0-only. Code offered as the editor About pane says. */';
 
@@ -49,12 +49,16 @@ esbuild.buildSync({
 });
 fs.cpSync(path.join(PASTA, 'icones'), path.join(DIST, 'bridge', 'icones'), { recursive: true });
 
-const html = fs.readFileSync(PAGINA, 'utf8');
-if (!html.includes(ETIQUETA)) {
-  if (!html.includes('</head>')) {
-    console.error('[bridge] editor.html sem </head>: a bridge não entrou.');
-    process.exit(1);
-  }
-  fs.writeFileSync(PAGINA, html.replace('</head>', `${ETIQUETA}\n</head>`));
+// A versão no endereço faz o navegador buscar a bridge nova em vez de usar a que guardou
+// (o ficheiro fica em cache durante horas, e a aplicação anfitriã tem de falar com a mesma versão).
+const versao = crypto.createHash('sha1').update(fs.readFileSync(path.join(DIST, 'bridge', 'index.js'))).digest('hex').slice(0, 10);
+const etiqueta = `<script type="module" src="/bridge/index.js?v=${versao}"></script>`;
+let html = fs.readFileSync(PAGINA, 'utf8');
+if (!html.includes('</head>')) {
+  console.error('[bridge] editor.html sem </head>: a bridge não entrou.');
+  process.exit(1);
 }
-console.log('[bridge] posta em editor.html (compacta).');
+// Tira a etiqueta de uma publicação anterior, se lá estiver.
+html = html.replace(/<script type="module" src="\/bridge\/index\.js[^"]*"><\/script>\n?/g, '');
+fs.writeFileSync(PAGINA, html.replace('</head>', `${etiqueta}\n</head>`));
+console.log(`[bridge] posta em editor.html (compacta, versão ${versao}).`);

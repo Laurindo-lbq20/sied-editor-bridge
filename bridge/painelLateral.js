@@ -72,7 +72,18 @@ export default function painelLateral(bridge) {
           // Só cliques de pessoas: o que fazemos ao painel dos títulos também passa aqui.
           if (!e.isTrusted) return;
           const outro = e.target.closest?.('.btn-category');
-          if (outro && outro.id !== ID && aberto) parar(false);
+          if (!outro || outro.id === ID || !aberto) return;
+          if (outro.id === ID_DO_EMPRESTADO) {
+            // O painel dos títulos está por baixo do nosso: aceso para o motor, apagado à vista. Clicá-lo é pedir
+            // para o ver; deixar o clique seguir faria o motor desligá-lo, por se julgar aceso.
+            e.stopPropagation();
+            e.preventDefault();
+            const emprestado = doc()?.getElementById(ID_DO_EMPRESTADO);
+            emprestado?.classList.add('active');
+            emprestado?.setAttribute('aria-pressed', 'true');
+            abriuEmprestado = false;
+          }
+          parar(false);
         },
         true,
       );
@@ -86,6 +97,8 @@ export default function painelLateral(bridge) {
     botao.setAttribute('aria-label', titulo ?? '');
     botao.classList.toggle('active', aberto);
     botao.setAttribute('aria-pressed', String(aberto));
+    // Enquanto o nosso painel está à frente, nenhum botão do motor aparece aceso ao lado do nosso.
+    if (aberto) apagarEmprestado(d);
     return botao;
   }
 
@@ -95,13 +108,14 @@ export default function painelLateral(bridge) {
     aberto = true;
     abertoEm = Date.now();
     ultima = '';
-    // Sem painel lateral aberto, abre-se o dos títulos para haver espaço.
-    if ((espaco(d)?.width ?? 0) < 20) {
-      const emprestado = d.getElementById(ID_DO_EMPRESTADO);
-      if (emprestado) {
-        emprestado.click();
-        abriuEmprestado = true;
-      }
+    // Competimos com os painéis do motor, que se excluem uns aos outros: abrir o dos títulos tira do lugar o que
+    // estiver aberto (a pesquisa, os comentários) e dá o espaço, ou abre-o se não havia nenhum. Se o dos títulos
+    // já era o aberto, fica como está. Em qualquer caso fica aceso para o motor por baixo do nosso, e fecha-se com
+    // ele: fechar as variáveis não deixa à vista um painel que ninguém pediu.
+    const emprestado = d.getElementById(ID_DO_EMPRESTADO);
+    if (emprestado) {
+      if (!emprestado.classList.contains('active')) emprestado.click();
+      abriuEmprestado = true;
     }
     // O botão dos títulos fica aceso por baixo do nosso: apaga-se o aspecto, sem mexer no estado dele.
     apagarEmprestado(d);
@@ -110,7 +124,6 @@ export default function painelLateral(bridge) {
   }
 
   function apagarEmprestado(d) {
-    if (!abriuEmprestado) return;
     const e = d.getElementById(ID_DO_EMPRESTADO);
     e?.classList.remove('active');
     e?.setAttribute('aria-pressed', 'false');
